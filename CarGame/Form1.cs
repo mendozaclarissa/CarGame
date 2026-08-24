@@ -12,12 +12,14 @@ namespace CarGame
 {
     public partial class Form1 : Form
     {
-
+        //ROAD
         private Timer timerRoad;
         private Image roadImage;
         private int roadWidth;
         private int roadHeight;
         private float roadY;
+
+        //CAR SELECTION
         private Image carSpriteSheet;
         private Image[] cars;
         private Rectangle[] carFrames;
@@ -25,9 +27,12 @@ namespace CarGame
         private bool choosingCar = true;
         private int hoveredCar = -1;
 
+        //ENEMY CARS
         private Image[] enemyCarSprites;
 
-
+        //Player
+        private int playerWidth = 55;
+        private int playerHeight = 95;
 
 
         public Form1()
@@ -42,6 +47,7 @@ namespace CarGame
             InitializeRoad();
             InitializeCars();
             RegisterEvets();
+
         }
 
         private void InitilizeWindow()
@@ -108,7 +114,8 @@ namespace CarGame
                new Rectangle(240,280,80,120)
             };
 
-   }
+        }
+
         private void RegisterEvets()
         {
             Paint += Form1_Paint;
@@ -118,6 +125,7 @@ namespace CarGame
             KeyDown += Form1_KeyDown;
         }
 
+        //-------------------------  UTILITY FUNCTIONS -------------------------
         private void UpdateHoveredCar(Point mousePos)
         {
             if (!choosingCar)
@@ -137,6 +145,26 @@ namespace CarGame
             }
         }
 
+        private void SelectCar(Point mousePos)
+        {
+            if (!choosingCar)
+                return;
+
+            for (int i = 0; i < carFrames.Length; i++)
+            {
+                if (carFrames[i].Contains(mousePos))
+                {
+                    playerCar = cars[i];
+                    choosingCar = false;
+                    Cursor = Cursors.Default;
+                    Invalidate();
+                    return;
+                }
+            }
+        }
+
+
+        //--------------------------- EVENT HANDLERS ---------------------------
         private void TimerRoad_Tick(object sender, EventArgs e)
         {
             roadY += 5;
@@ -161,10 +189,12 @@ namespace CarGame
 
         private void Form1_MouseMove(object sender, MouseEventArgs e)
         {
+            UpdateHoveredCar(e.Location);
         }
 
         private void Form1_MouseClick(object sender, MouseEventArgs e)
         {
+            SelectCar(e.Location);
         }
 
         private void Form1_Paint(object sender, PaintEventArgs e)
@@ -173,9 +203,12 @@ namespace CarGame
 
             if (choosingCar)
                 DrawCarSelection(e.Graphics);
+            else
+                DrawPlayer(e.Graphics);
         }
 
 
+        //--------------------------- DRAWING METHODS ---------------------------
         private void DrawRoad(Graphics g)
         {
             g.DrawImage(roadImage, 0, roadY, roadWidth, roadHeight);
@@ -205,5 +238,11 @@ namespace CarGame
             }
 
         }
+
+        private void DrawPlayer(Graphics g)
+        {
+            g.DrawImage(playerCar, new Rectangle(170, 400, playerWidth, playerHeight));
+        }
+
     }
 }
