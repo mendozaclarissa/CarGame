@@ -353,6 +353,10 @@ namespace CarGame
 
         private void SpawnInLane(int Lane, float y)
         {
+            if (CanSpawnInLine(Lane))
+                return;
+
+
             for (int i = 0; i < MAX_ENEMIES; i++)
             {
                 if (!enemyActive[i])
@@ -364,6 +368,23 @@ namespace CarGame
                     return;
                 }
             }
+        }
+
+        private bool CanSpawnInLine(int Lane)
+        {
+            const int minGap = 220;
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+                if (enemyLane[i] != Lane)
+                    continue;
+                if (enemyY[i] < minGap)
+                    return false;
+            }
+
+            return true;
         }
 
 
