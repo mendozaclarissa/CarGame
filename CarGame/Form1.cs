@@ -13,6 +13,7 @@ namespace CarGame
 {
     public partial class Form1 : Form
     {
+        private Random rnd = new Random();
         //ROAD
         private Timer timerRoad;
         private Image roadImage;
@@ -43,6 +44,18 @@ namespace CarGame
 
         //ENEMY CARS
         private Image[] enemyCarSprites;
+        private const int MAX_ENEMIES = 10;
+        private int[] enemySprite = new int[MAX_ENEMIES];
+        private int[] enemyLane = new int[MAX_ENEMIES];
+        private float[] enemyY = new float[MAX_ENEMIES];
+        private bool[] enemyActive = new bool[MAX_ENEMIES];
+        private int enemyWidth = 55;
+        private int enemyHeight = 95;
+        private float enemyDistance = 0f;
+        private readonly float spawnEvery = 260f;
+
+
+
 
         //Player
         private int playerWidth = 55;
@@ -63,6 +76,26 @@ namespace CarGame
         private float totalDistanceMeters = 0f;
         private float pixelperMeter = 12f;
 
+        private int[][] trafficPatterns =
+       {
+            new[]{0},
+            new[]{1},
+            new[]{2},
+            new[]{3},
+
+            new[]{0,2},
+            new[]{1,3},
+
+            new[]{0,1},
+            new[]{2,3},
+
+            new[]{1,2},
+
+            new[]{0,2,3},
+            new[]{0,1,3}
+        };
+        private float spawnDistance;
+
         public Form1()
         {
             InitializeComponent();
@@ -75,6 +108,7 @@ namespace CarGame
             InitializeRoad();
             InitializeCars();
             InitilizePlayer();
+            InitializeEnemy();
             RegisterEvets();
         }
 
@@ -160,6 +194,12 @@ namespace CarGame
 
             currentLane = 1;
             playerX = lanes[currentLane];
+        }
+
+        private void InitializeEnemy()
+        {
+            for (int i = 0; i < MAX_ENEMIES; i++)
+                enemyActive[i] = false;
         }
 
         private void RegisterEvets()
@@ -306,6 +346,51 @@ namespace CarGame
             }
         }
 
+        private void SpawnEnemy()
+        {
+            SpawnInLane(rnd.Next(lanes.Length), -enemyHeight);
+        }
+
+        private void SpawnInLane(int Lane, float y)
+        {
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                {
+                    enemyActive[i] = true;
+                    enemyLane[i] = Lane;
+                    enemySprite[i] = rnd.Next(enemyCarSprites.Length);
+                    enemyY[i] = y - rnd.Next(40, enemyHeight);
+                    return;
+                }
+            }
+        }
+
+
+        private void updateEnemySpeed()
+        {
+            spawnDistance += speed;
+
+            if (spawnDistance >= spawnEvery)
+            {
+                spawnDistance = 0;
+                SpawnEnemy();
+            }
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+
+                if (!isBraking)
+                    enemyY[i] += speed + 2;
+                else
+                    enemyY[i] -= 2;
+
+                if (enemyY[i] > ClientSize.Height)
+                    enemyActive[i] = false;
+            }
+        }
 
         //--------------------------- EVENT HANDLERS ---------------------------
         private void TimerRoad_Tick(object sender, EventArgs e)
@@ -313,6 +398,7 @@ namespace CarGame
             UpdateSpeed();
             UpdateRoad();
             UpdatePlayerPosition();
+            updateEnemySpeed();
             Invalidate();
         }
 
@@ -361,7 +447,10 @@ namespace CarGame
             if (choosingCar)
                 DrawCarSelection(e.Graphics);
             else
+            {
+                DrawEnemies(e.Graphics);
                 DrawPlayer(e.Graphics);
+            }
 
 
             DrawDebugInfo(e.Graphics);
@@ -415,9 +504,36 @@ namespace CarGame
             }
         }
 
+        private void DrawEnemies(Graphics g)
+        {
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+
+                g.DrawImage(
+                    enemyCarSprites[enemySprite[i]],
+                    lanes[enemyLane[i]],
+                    (int)enemyY[i],
+                    enemyWidth,
+                    enemyHeight
+                    );
+
+            }
+        }
+
 
         private void DrawDebugInfo(Graphics g)
         {
+            int activeEnemies = 0;
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (enemyActive[i])
+                {
+                    activeEnemies++;
+                }
+            }
+
             //Draw debug info Overlay
             using (Brush overlay = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
                 g.FillRectangle(overlay, new Rectangle(5, ClientSize.Height - 105, 150, 100));
@@ -428,7 +544,9 @@ namespace CarGame
                 string debugtext = $"Speed: {speed:f2}\n" +
                                    $"Distance: {totalDistanceMeters:f2} m\n" +
                                    $"Player Lane: {currentLane}\n" +
-                                   $"Target Lane: {targetLane}";
+                                   $"Target Lane: {targetLane}\n" +
+                                   $"Enemy Active: {activeEnemies}";
+
                 g.DrawString(debugtext, font, Brushes.Yellow, 0, ClientSize.Height - 100);
             }
         }
