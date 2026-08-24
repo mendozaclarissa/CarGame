@@ -14,6 +14,7 @@ namespace CarGame
     public partial class Form1 : Form
     {
         private Random rnd = new Random();
+        private bool Tanga = false;
         //ROAD
         private Timer timerRoad;
         private Image roadImage;
@@ -95,6 +96,7 @@ namespace CarGame
             new[]{0,1,3}
         };
         private float spawnDistance;
+        private object Collide;
 
         public Form1()
         {
@@ -109,6 +111,7 @@ namespace CarGame
             InitializeCars();
             InitilizePlayer();
             InitializeEnemy();
+            CheckCollision();
             RegisterEvets();
         }
 
@@ -353,7 +356,7 @@ namespace CarGame
 
         private void SpawnInLane(int Lane, float y)
         {
-            if (CanSpawnInLine(Lane))
+            if (!CanSpawnInLine(Lane))
                 return;
 
 
@@ -387,7 +390,6 @@ namespace CarGame
             return true;
         }
 
-
         private void updateEnemySpeed()
         {
             spawnDistance += speed;
@@ -411,6 +413,44 @@ namespace CarGame
                 if (enemyY[i] > ClientSize.Height)
                     enemyActive[i] = false;
             }
+        }
+
+        private void CheckCollision()
+        {
+            //player hitbox
+            Rectangle playerRect = new Rectangle(
+                playerX + 8,
+                (int)playerY + 8,
+                playerWidth - 16,
+                playerHeight - 16
+                );
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+
+                Rectangle enemyRect = new Rectangle(
+                    lanes[enemyLane[i]] + 8,
+                     (int)playerY + 8,
+                     playerWidth - 16,
+                     playerHeight - 16
+                     );
+
+                if (playerRect.IntersectsWith(enemyRect))
+                {
+                    Tanga = true;
+                    Invalidate();
+                    return;
+                }
+                else
+                {
+                    Tanga = true;
+                    Invalidate();
+                    return;
+                }
+            }
+            
         }
 
         //--------------------------- EVENT HANDLERS ---------------------------
@@ -552,8 +592,28 @@ namespace CarGame
                 if (enemyActive[i])
                 {
                     activeEnemies++;
+
+                    Rectangle enemyRect = new Rectangle(
+                   lanes[enemyLane[i]] + 8,
+                    (int)playerY + 8,
+                    playerWidth - 16,
+                    playerHeight - 16
+                    );
+
+                    g.DrawRectangle(Pens.Red, enemyRect);
+
                 }
             }
+
+            Rectangle playerRect = new Rectangle(
+               playerX + 8,
+               (int)playerY + 8,
+               playerWidth - 16,
+               playerHeight - 16
+               );
+
+            g.DrawRectangle(Pens.Lime, playerRect);
+
 
             //Draw debug info Overlay
             using (Brush overlay = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
@@ -565,6 +625,7 @@ namespace CarGame
                 string debugtext = $"Speed: {speed:f2}\n" +
                                    $"Distance: {totalDistanceMeters:f2} m\n" +
                                    $"Player Lane: {currentLane}\n" +
+                                   $"Collided: {Collide}\n" +
                                    $"Target Lane: {targetLane}\n" +
                                    $"Enemy Active: {activeEnemies}";
 
