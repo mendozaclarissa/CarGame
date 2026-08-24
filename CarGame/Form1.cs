@@ -14,7 +14,9 @@ namespace CarGame
     public partial class Form1 : Form
     {
         private Random rnd = new Random();
-        private bool Tanga = false;
+        private bool Collide = false;
+        private bool gameOver = false;
+
         //ROAD
         private Timer timerRoad;
         private Image roadImage;
@@ -50,12 +52,11 @@ namespace CarGame
         private int[] enemyLane = new int[MAX_ENEMIES];
         private float[] enemyY = new float[MAX_ENEMIES];
         private bool[] enemyActive = new bool[MAX_ENEMIES];
+
         private int enemyWidth = 55;
         private int enemyHeight = 95;
-        private float enemyDistance = 0f;
-        private readonly float spawnEvery = 260f;
-
-
+        private float spawnDistance = 0f;
+        private float spawnEvery = 260f;
 
 
         //Player
@@ -78,7 +79,7 @@ namespace CarGame
         private float pixelperMeter = 12f;
 
         private int[][] trafficPatterns =
-       {
+        {
             new[]{0},
             new[]{1},
             new[]{2},
@@ -95,8 +96,6 @@ namespace CarGame
             new[]{0,2,3},
             new[]{0,1,3}
         };
-        private float spawnDistance;
-        private object Collide;
 
         public Form1()
         {
@@ -111,7 +110,6 @@ namespace CarGame
             InitializeCars();
             InitilizePlayer();
             InitializeEnemy();
-            CheckCollision();
             RegisterEvets();
         }
 
@@ -252,6 +250,104 @@ namespace CarGame
             }
         }
 
+        private void SpawnEnemy()
+        {
+            SpawnInLane(rnd.Next(4), -enemyHeight);
+        }
+
+        private void SpawnInLane(int lane, float y)
+        {
+            if (!CanSpawnInLane(lane))
+                return;
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                {
+                    enemyActive[i] = true;
+                    enemyLane[i] = lane;
+                    enemySprite[i] = rnd.Next(enemyCarSprites.Length);
+                    enemyY[i] = y - rnd.Next(40, enemyHeight);
+                    return;
+                }
+            }
+        }
+
+        private bool CanSpawnInLane(int lane)
+        {
+            const int minGap = 220;
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+                if (enemyLane[i] != lane)
+                    continue;
+                if (enemyY[i] < minGap)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private void CheckCollision()
+        {
+            // PlayerHitbox
+            Rectangle playerRect = new Rectangle(
+                playerX + 8,
+                (int)playerY + 8,
+                playerWidth - 16,
+                playerHeight - 16
+                );
+
+            //Enemies
+            for (int i = 0; i < MAX_ENEMIES; i++)
+            {
+                if (!enemyActive[i])
+                    continue;
+
+                Rectangle enemyRect = new Rectangle(
+                    lanes[enemyLane[i]] + 8,
+                    (int)enemyY[i] + 8,
+                    enemyWidth - 16,
+                    enemyHeight - 16
+                    );
+
+                if (playerRect.IntersectsWith(enemyRect))
+                {
+                    gameOver = true;
+                    Collide = true;
+                    Invalidate();
+                    return;
+                }
+                else
+                {
+                    Collide = false;
+                    Invalidate();
+                    return;
+                }
+
+            }
+        }
+
+        private void RestartGame()
+        {
+            gameOver = false;
+            roadY = 0;
+            speed = normalSpeed;
+            totalDistanceMeters = 0f;
+
+            playerX = lanes[1];
+            targetLane = 1;
+            currentLane = 1;
+
+            for (int i = 0; i < MAX_ENEMIES; i++)
+                enemyActive[i] = false;
+
+            timerRoad.Start();
+        }
+
+        //----------------------------- UPDATE METHODS -------------------------
         private void UpdatePlayerPosition()
         {
             int targetX = lanes[targetLane];
@@ -349,47 +445,6 @@ namespace CarGame
             }
         }
 
-        private void SpawnEnemy()
-        {
-            SpawnInLane(rnd.Next(lanes.Length), -enemyHeight);
-        }
-
-        private void SpawnInLane(int Lane, float y)
-        {
-            if (!CanSpawnInLine(Lane))
-                return;
-
-
-            for (int i = 0; i < MAX_ENEMIES; i++)
-            {
-                if (!enemyActive[i])
-                {
-                    enemyActive[i] = true;
-                    enemyLane[i] = Lane;
-                    enemySprite[i] = rnd.Next(enemyCarSprites.Length);
-                    enemyY[i] = y - rnd.Next(40, enemyHeight);
-                    return;
-                }
-            }
-        }
-
-        private bool CanSpawnInLine(int Lane)
-        {
-            const int minGap = 220;
-
-            for (int i = 0; i < MAX_ENEMIES; i++)
-            {
-                if (!enemyActive[i])
-                    continue;
-                if (enemyLane[i] != Lane)
-                    continue;
-                if (enemyY[i] < minGap)
-                    return false;
-            }
-
-            return true;
-        }
-
         private void updateEnemySpeed()
         {
             spawnDistance += speed;
@@ -415,56 +470,30 @@ namespace CarGame
             }
         }
 
-        private void CheckCollision()
-        {
-            //player hitbox
-            Rectangle playerRect = new Rectangle(
-                playerX + 8,
-                (int)playerY + 8,
-                playerWidth - 16,
-                playerHeight - 16
-                );
-
-            for (int i = 0; i < MAX_ENEMIES; i++)
-            {
-                if (!enemyActive[i])
-                    continue;
-
-                Rectangle enemyRect = new Rectangle(
-                    lanes[enemyLane[i]] + 8,
-                     (int)playerY + 8,
-                     playerWidth - 16,
-                     playerHeight - 16
-                     );
-
-                if (playerRect.IntersectsWith(enemyRect))
-                {
-                    Tanga = true;
-                    Invalidate();
-                    return;
-                }
-                else
-                {
-                    Tanga = true;
-                    Invalidate();
-                    return;
-                }
-            }
-            
-        }
-
         //--------------------------- EVENT HANDLERS ---------------------------
         private void TimerRoad_Tick(object sender, EventArgs e)
         {
+            if (gameOver)
+                return;
+
             UpdateSpeed();
             UpdateRoad();
             UpdatePlayerPosition();
             updateEnemySpeed();
+            CheckCollision();
             Invalidate();
         }
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
+            if (gameOver)
+            {
+                if ((e.KeyCode == Keys.Escape) ||
+                    (e.KeyCode == Keys.R) || (e.KeyCode == Keys.Enter))
+                    RestartGame();
+                return;
+            }
+
             if (choosingCar)
                 return;
 
@@ -504,15 +533,15 @@ namespace CarGame
         private void Form1_Paint(object sender, PaintEventArgs e)
         {
             DrawRoad(e.Graphics);
+            DrawEnemies(e.Graphics);
 
             if (choosingCar)
                 DrawCarSelection(e.Graphics);
             else
-            {
-                DrawEnemies(e.Graphics);
                 DrawPlayer(e.Graphics);
-            }
 
+            if (gameOver)
+                DrawGameOver(e.Graphics);
 
             DrawDebugInfo(e.Graphics);
         }
@@ -561,7 +590,6 @@ namespace CarGame
                     g.FillEllipse(brush, playerX + 10, playerY + playerHeight - 10, 8, 8);
                     g.FillEllipse(brush, playerX + playerWidth - 18, playerY + playerHeight - 10, 8, 8);
                 }
-
             }
         }
 
@@ -579,41 +607,39 @@ namespace CarGame
                     enemyWidth,
                     enemyHeight
                     );
-
             }
         }
 
-
         private void DrawDebugInfo(Graphics g)
         {
-            int activeEnemies = 0;
+            //Count active enemy
+            int activeEnenmies = 0;
             for (int i = 0; i < MAX_ENEMIES; i++)
             {
                 if (enemyActive[i])
                 {
-                    activeEnemies++;
+                    activeEnenmies++;
 
                     Rectangle enemyRect = new Rectangle(
-                   lanes[enemyLane[i]] + 8,
-                    (int)playerY + 8,
-                    playerWidth - 16,
-                    playerHeight - 16
-                    );
+                        lanes[enemyLane[i]] + 8,
+                        (int)enemyY[i] + 8,
+                        enemyWidth - 16,
+                        enemyHeight - 16
+                        );
 
                     g.DrawRectangle(Pens.Red, enemyRect);
-
                 }
             }
 
+            // PlayerHitbox
             Rectangle playerRect = new Rectangle(
-               playerX + 8,
-               (int)playerY + 8,
-               playerWidth - 16,
-               playerHeight - 16
-               );
+                playerX + 8,
+                (int)playerY + 8,
+                playerWidth - 16,
+                playerHeight - 16
+                );
 
             g.DrawRectangle(Pens.Lime, playerRect);
-
 
             //Draw debug info Overlay
             using (Brush overlay = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
@@ -624,13 +650,43 @@ namespace CarGame
             {
                 string debugtext = $"Speed: {speed:f2}\n" +
                                    $"Distance: {totalDistanceMeters:f2} m\n" +
-                                   $"Player Lane: {currentLane}\n" +
                                    $"Collided: {Collide}\n" +
+                                   $"Player Lane: {currentLane}\n" +
                                    $"Target Lane: {targetLane}\n" +
-                                   $"Enemy Active: {activeEnemies}";
-
+                                   $"Enemy Active: {activeEnenmies}";
                 g.DrawString(debugtext, font, Brushes.Yellow, 0, ClientSize.Height - 100);
             }
         }
+
+        private void DrawGameOver(Graphics g)
+        {
+            using (Brush overlay = new SolidBrush(Color.FromArgb(180, 0, 0, 0)))
+                g.FillRectangle(overlay, ClientRectangle);
+
+            using (Font title = new Font("Arial", 28, FontStyle.Bold))
+            using (Font subtitle = new Font("Arial", 14, FontStyle.Regular))
+            {
+                string gameOverText = "GAME OVER";
+                string retryText = "Press R to Restart";
+
+                SizeF titleSize = g.MeasureString(gameOverText, title);
+                SizeF retrySize = g.MeasureString(retryText, subtitle);
+
+                g.DrawString(
+                    gameOverText,
+                    title,
+                    Brushes.Red,
+                    (ClientSize.Width - titleSize.Width) / 2,
+                    220);
+
+                g.DrawString(
+                    retryText,
+                    subtitle,
+                    Brushes.White,
+                    (ClientSize.Width - retrySize.Width) / 2,
+                    280);
+            }
+        }
+
     }
 }
